@@ -3,6 +3,12 @@
 S3_BUCKET=identity-lambda
 S3_KEY=identity-deletion.zip
 
+parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
+cd "$parent_path"
+
+echo "Cleaning previous package..."
+rm $S3_KEY
+
 echo "Zipping code..."
 zip -r $S3_KEY *
 

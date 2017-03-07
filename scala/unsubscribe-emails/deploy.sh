@@ -3,6 +3,9 @@
 S3_BUCKET=identity-lambda
 S3_KEY=unsubscribe-emails.jar
 
+parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
+cd "$parent_path"
+
 echo "Creating a package and uploading to S3 bucket..."
 sbt s3-upload
 
