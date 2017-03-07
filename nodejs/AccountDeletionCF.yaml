@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template for Identity Account Deletion step function and constituent lambdas"
+Resources:
+  AccountDeletion:
+    Type: "AWS::StepFunctions::StateMachine"
+    Properties:
+      DefinitionString:
+        |-
+        {
+          "Comment": "If automatic deletion criteria is satisfied, deletes the user, otherwise notifies Userhelp for manual deletion.",
+          "StartAt": "CheckDeletionCriteriaInParallel",
+
+          "States": {
+            "CheckDeletionCriteriaInParallel": {
+              "Type": "Parallel",
+              "Next": "isAutoDeletionCriteriaSatisfied",
+              "Branches": [
+                {
+                  "StartAt": "userIsNotSubscriber",
+                  "States": {
+                    "userIsNotSubscriber": {
+                      "Type": "Task",
+                      "ResultPath": "$.deletionCriterionSatisfied",
+                      "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:userIsNotSubscriber",
+                      "End": true
+                    }
+                  }
+                },
+                {
+                  "StartAt": "userIsNotMember",
+                  "States": {
+                    "userIsNotMember": {
+                      "Type": "Task",
+                      "ResultPath": "$.deletionCriterionSatisfied",
+                      "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:userIsNotMember",
+                      "End": true
+                    }
+                  }
+                },
+                {
+                  "StartAt": "userHasNotCommented",
+                  "States": {
+                    "userHasNotCommented": {
+                      "Type": "Task",
+                      "ResultPath": "$.deletionCriterionSatisfied",
+                      "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:userHasNotCommented",
+                      "End": true
+                    }
+                  }
+                },
+                {
+                  "StartAt": "userHasNoJobs",
+                  "States": {
+                    "userHasNoJobs": {
+                      "Type": "Task",
+                      "ResultPath": "$.deletionCriterionSatisfied",
+                      "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:userHasNoJobs",
+                      "End": true
+                    }
+                  }
+                }
+              ]
+            },
+
+            "isAutoDeletionCriteriaSatisfied": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:isAutoDeletionCriteriaSatisfied",
+              "Next": "chooseAccountDeletionType"
+            },
+
+            "chooseAccountDeletionType": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.criteriaSatisfied",
+                  "BooleanEquals": true,
+                  "Next": "AutoDeletion"
+                },
+                {
+                  "Variable": "$.criteriaSatisfied",
+                  "BooleanEquals": false,
+                  "Next": "ManualDeletion"
+                }
+              ]
+            },
+
+            "UnsubscribeFromAllMailingLists": {
+              "Type": "Task",
+              "InputPath": "$.credentials",
+              "ResultPath": "$.unsubscribedEmails",
+              "OutputPath": "$",
+              "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:unsubscribeEmails",
+              "Next": "DeleteUser"
+            },
+
+            "AutoDeletion": {
+              "Type": "Pass",
+              "Next": "UnsubscribeFromAllMailingLists"
+            },
+
+            "DeleteUser": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:deleteUser",
+              "End": true
+            },
+
+            "ManualDeletion": {
+              "Type": "Pass",
+              "Next": "NotifyUserhelp"
+            },
+
+            "NotifyUserhelp": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:notifyUserhelp",
+              "End": true
+            }
+          }
+        }
+      RoleArn: arn:aws:iam::942464564246:role/service-role/StatesExecutionRole-eu-west-1
+
+  StartAccountDeletion:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: startAccountDeletion
+        Description: Execute Account Deletion step function
+        Handler: "startAccountDeletion.handler"
+        Role: arn:aws:iam::942464564246:role/APIGatewayAWSProxyStepFunctionsExecRole
+        Code:
+          S3Bucket: identity-lambda
+          S3Key: identity-deletion.zip
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "60"
+        Environment:
+          Variables:
+            STATE_MACHINE_ARN: !GetAtt AccountDeletion.Name
