@@ -5,12 +5,18 @@ Parameters:
   etClientId:
     Type: String
     Description: notifyUserhelp Exact Target client ID
+
   etClientSecret:
     Type: String
     Description: notifyUserhelp Exact Target client secret
+
   etUserhelpEmail:
     Type: String
     Description: notifyUserhelp Exact Target email address
+
+  lambdaS3CodeBucket:
+    Type: String
+    Description: S3 bucket name containing the Lambda code
 
 Resources:
   AccountDeletion:
@@ -138,7 +144,7 @@ Resources:
         Handler: "startAccountDeletion.handler"
         Role: arn:aws:iam::942464564246:role/APIGatewayAWSProxyStepFunctionsExecRole
         Code:
-          S3Bucket: identity-lambda
+          S3Bucket: !Ref lambdaS3CodeBucket
           S3Key: identity-deletion.zip
         Runtime: "nodejs4.3"
         MemorySize: "512"
@@ -155,7 +161,7 @@ Resources:
         Handler: "userIsNotMember.handler"
         Role: arn:aws:iam::942464564246:role/lambda_basic_execution
         Code:
-          S3Bucket: identity-lambda
+          S3Bucket: !Ref lambdaS3CodeBucket
           S3Key: identity-deletion.zip
         Runtime: "nodejs4.3"
         MemorySize: "512"
@@ -169,7 +175,7 @@ Resources:
         Handler: "userIsNotSubscriber.handler"
         Role: arn:aws:iam::942464564246:role/lambda_basic_execution
         Code:
-          S3Bucket: identity-lambda
+          S3Bucket: !Ref lambdaS3CodeBucket
           S3Key: identity-deletion.zip
         Runtime: "nodejs4.3"
         MemorySize: "512"
@@ -183,7 +189,7 @@ Resources:
         Handler: "userHasNotCommented.handler"
         Role: arn:aws:iam::942464564246:role/lambda_basic_execution
         Code:
-          S3Bucket: identity-lambda
+          S3Bucket: !Ref lambdaS3CodeBucket
           S3Key: identity-deletion.zip
         Runtime: "nodejs4.3"
         MemorySize: "512"
@@ -197,7 +203,7 @@ Resources:
         Handler: "userHasNoJobs.handler"
         Role: arn:aws:iam::942464564246:role/lambda_basic_execution
         Code:
-          S3Bucket: identity-lambda
+          S3Bucket: !Ref lambdaS3CodeBucket
           S3Key: identity-deletion.zip
         Runtime: "nodejs4.3"
         MemorySize: "512"
@@ -211,7 +217,7 @@ Resources:
         Handler: "isAutoDeletionCriteriaSatisfied.handler"
         Role: arn:aws:iam::942464564246:role/lambda_basic_execution
         Code:
-          S3Bucket: identity-lambda
+          S3Bucket: !Ref lambdaS3CodeBucket
           S3Key: identity-deletion.zip
         Runtime: "nodejs4.3"
         MemorySize: "512"
@@ -225,7 +231,7 @@ Resources:
         Handler: "com.gu.MyHandler"
         Role: arn:aws:iam::942464564246:role/lambda_basic_execution
         Code:
-          S3Bucket: identity-lambda
+          S3Bucket: !Ref lambdaS3CodeBucket
           S3Key: unsubscribe-emails.jar
         Runtime: "java8"
         MemorySize: "1024"
@@ -239,7 +245,7 @@ Resources:
         Handler: "deleteUser.handler"
         Role: arn:aws:iam::942464564246:role/lambda_basic_execution
         Code:
-          S3Bucket: identity-lambda
+          S3Bucket: !Ref lambdaS3CodeBucket
           S3Key: identity-deletion.zip
         Runtime: "nodejs4.3"
         MemorySize: "512"
@@ -253,7 +259,7 @@ Resources:
         Handler: "notifyUserhelp.handler"
         Role: arn:aws:iam::942464564246:role/lambda_basic_execution
         Code:
-          S3Bucket: identity-lambda
+          S3Bucket: !Ref lambdaS3CodeBucket
           S3Key: identity-deletion.zip
         Runtime: "nodejs4.3"
         MemorySize: "512"
