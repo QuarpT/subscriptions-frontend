@@ -1,3 +1,8 @@
+## Deployment
+
+1. Export AWS credentials from Janus as environmental variables
+2. Run `deploy.sh` script
+
 ## AWS CLI examples
 
 ```
