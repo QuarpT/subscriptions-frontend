@@ -1,5 +1,17 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "CloudFormation template for Identity Account Deletion step function and constituent lambdas"
+
+Parameters:
+  etClientId:
+    Type: String
+    Description: notifyUserhelp Exact Target client ID
+  etClientSecret:
+    Type: String
+    Description: notifyUserhelp Exact Target client secret
+  etUserhelpEmail:
+    Type: String
+    Description: notifyUserhelp Exact Target email address
+
 Resources:
   AccountDeletion:
     Type: "AWS::StepFunctions::StateMachine"
@@ -248,6 +260,6 @@ Resources:
         Timeout: "10"
         Environment:
           Variables:
-            CLIENT_SECRET: "gkWSBcyU7rSRdmp8Il7Ro2ZH"
-            CLIENT_ID: "6dl0yenn49028ydaa125z0lb"
-            USERHELP_EMAIL: "mario.galic@guardian.co.uk"
+            CLIENT_SECRET: !Ref etClientSecret
+            CLIENT_ID: !Ref etClientId
+            USERHELP_EMAIL: !Ref etUserhelpEmail
