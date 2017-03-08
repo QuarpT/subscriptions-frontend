@@ -1,0 +1,276 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template for Identity Account Deletion step function and constituent lambdas"
+
+Parameters:
+  etClientId:
+    Type: String
+    Description: notifyUserhelp Exact Target client ID
+
+  etClientSecret:
+    Type: String
+    Description: notifyUserhelp Exact Target client secret
+
+  etUserhelpEmail:
+    Type: String
+    Description: notifyUserhelp Exact Target email address
+
+  lambdaCodeS3Bucket:
+    Type: String
+    Description: S3 bucket name containing the Lambda code
+
+  lambdaCodeS3Key:
+    Type: String
+    Description: Package (.zip, .jar) in S3 containing the Lambda code
+
+Resources:
+  AccountDeletion:
+    Type: "AWS::StepFunctions::StateMachine"
+    Properties:
+      DefinitionString:
+        !Sub
+          |-
+          {
+            "Comment": "If automatic deletion criteria is satisfied, deletes the user, otherwise notifies Userhelp for manual deletion.",
+            "StartAt": "CheckDeletionCriteriaInParallel",
+
+            "States": {
+              "CheckDeletionCriteriaInParallel": {
+                "Type": "Parallel",
+                "Next": "isAutoDeletionCriteriaSatisfied",
+                "Branches": [
+                  {
+                    "StartAt": "userIsNotSubscriber",
+                    "States": {
+                      "userIsNotSubscriber": {
+                        "Type": "Task",
+                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userIsNotSubscriber",
+                        "End": true
+                      }
+                    }
+                  },
+                  {
+                    "StartAt": "userIsNotMember",
+                    "States": {
+                      "userIsNotMember": {
+                        "Type": "Task",
+                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userIsNotMember",
+                        "End": true
+                      }
+                    }
+                  },
+                  {
+                    "StartAt": "userHasNotCommented",
+                    "States": {
+                      "userHasNotCommented": {
+                        "Type": "Task",
+                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userHasNotCommented",
+                        "End": true
+                      }
+                    }
+                  },
+                  {
+                    "StartAt": "userHasNoJobs",
+                    "States": {
+                      "userHasNoJobs": {
+                        "Type": "Task",
+                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userHasNoJobs",
+                        "End": true
+                      }
+                    }
+                  }
+                ]
+              },
+
+              "isAutoDeletionCriteriaSatisfied": {
+                "Type": "Task",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:isAutoDeletionCriteriaSatisfied",
+                "Next": "chooseAccountDeletionType"
+              },
+
+              "chooseAccountDeletionType": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.criteriaSatisfied",
+                    "BooleanEquals": true,
+                    "Next": "AutoDeletion"
+                  },
+                  {
+                    "Variable": "$.criteriaSatisfied",
+                    "BooleanEquals": false,
+                    "Next": "ManualDeletion"
+                  }
+                ]
+              },
+
+              "UnsubscribeFromAllMailingLists": {
+                "Type": "Task",
+                "InputPath": "$.credentials",
+                "ResultPath": "$.unsubscribedEmails",
+                "OutputPath": "$",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:unsubscribeEmails",
+                "Next": "DeleteUser"
+              },
+
+              "AutoDeletion": {
+                "Type": "Pass",
+                "Next": "UnsubscribeFromAllMailingLists"
+              },
+
+              "DeleteUser": {
+                "Type": "Task",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:deleteUser",
+                "End": true
+              },
+
+              "ManualDeletion": {
+                "Type": "Pass",
+                "Next": "NotifyUserhelp"
+              },
+
+              "NotifyUserhelp": {
+                "Type": "Task",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:notifyUserhelp",
+                "End": true
+              }
+            }
+          }
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/StatesExecutionRole-eu-west-1
+
+  startAccountDeletion:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: startAccountDeletion
+        Description: Execute Account Deletion step function
+        Handler: "startAccountDeletion.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/APIGatewayAWSProxyStepFunctionsExecRole
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "90"
+        Environment:
+          Variables:
+            STATE_MACHINE_ARN: !GetAtt AccountDeletion.Name
+
+  userIsNotMember:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: userIsNotMember
+        Description: Returns true if user is not a member
+        Handler: "userIsNotMember.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "10"
+
+  userIsNotSubscriber:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: userIsNotSubscriber
+        Description: Returns true if user is not a DigiPack subscriber
+        Handler: "userIsNotSubscriber.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "10"
+
+  userHasNotCommented:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: userHasNotCommented
+        Description: Returns true if user has not commented
+        Handler: "userHasNotCommented.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "10"
+
+  userHasNoJobs:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: userHasNoJobs
+        Description: Returns true if user has no Jobs account
+        Handler: "userHasNoJobs.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "10"
+
+  isAutoDeletionCriteriaSatisfied:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: isAutoDeletionCriteriaSatisfied
+        Description: Returns true if all the criteria for automatic account deletion is satisfied
+        Handler: "isAutoDeletionCriteriaSatisfied.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "10"
+
+  unsubscribeEmails:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: unsubscribeEmails
+        Description: Unsubscribe from all mailing lists in ExactTarget via Identity
+        Handler: "com.gu.MyHandler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: unsubscribe-emails.jar
+        Runtime: "java8"
+        MemorySize: "1024"
+        Timeout: "30"
+
+  deleteUser:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: deleteUser
+        Description: Delete user from Identity Mongo DB
+        Handler: "deleteUser.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "20"
+
+  notifyUserhelp:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: notifyUserhelp
+        Description: Send an email to Userhelp notifying them to perform manual deletion
+        Handler: "notifyUserhelp.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "10"
+        Environment:
+          Variables:
+            CLIENT_SECRET: !Ref etClientSecret
+            CLIENT_ID: !Ref etClientId
+            USERHELP_EMAIL: !Ref etUserhelpEmail

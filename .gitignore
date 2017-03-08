@@ -1,1 +1,5 @@
 .idea
+*.zip
+*.jar
+.ensime*
+target/
