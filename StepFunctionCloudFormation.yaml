@@ -27,118 +27,119 @@ Resources:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:
       DefinitionString:
-        |-
-        {
-          "Comment": "If automatic deletion criteria is satisfied, deletes the user, otherwise notifies Userhelp for manual deletion.",
-          "StartAt": "CheckDeletionCriteriaInParallel",
+        !Sub
+          |-
+          {
+            "Comment": "If automatic deletion criteria is satisfied, deletes the user, otherwise notifies Userhelp for manual deletion.",
+            "StartAt": "CheckDeletionCriteriaInParallel",
 
-          "States": {
-            "CheckDeletionCriteriaInParallel": {
-              "Type": "Parallel",
-              "Next": "isAutoDeletionCriteriaSatisfied",
-              "Branches": [
-                {
-                  "StartAt": "userIsNotSubscriber",
-                  "States": {
-                    "userIsNotSubscriber": {
-                      "Type": "Task",
-                      "ResultPath": "$.deletionCriterionSatisfied",
-                      "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:userIsNotSubscriber",
-                      "End": true
+            "States": {
+              "CheckDeletionCriteriaInParallel": {
+                "Type": "Parallel",
+                "Next": "isAutoDeletionCriteriaSatisfied",
+                "Branches": [
+                  {
+                    "StartAt": "userIsNotSubscriber",
+                    "States": {
+                      "userIsNotSubscriber": {
+                        "Type": "Task",
+                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userIsNotSubscriber",
+                        "End": true
+                      }
+                    }
+                  },
+                  {
+                    "StartAt": "userIsNotMember",
+                    "States": {
+                      "userIsNotMember": {
+                        "Type": "Task",
+                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userIsNotMember",
+                        "End": true
+                      }
+                    }
+                  },
+                  {
+                    "StartAt": "userHasNotCommented",
+                    "States": {
+                      "userHasNotCommented": {
+                        "Type": "Task",
+                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userHasNotCommented",
+                        "End": true
+                      }
+                    }
+                  },
+                  {
+                    "StartAt": "userHasNoJobs",
+                    "States": {
+                      "userHasNoJobs": {
+                        "Type": "Task",
+                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userHasNoJobs",
+                        "End": true
+                      }
                     }
                   }
-                },
-                {
-                  "StartAt": "userIsNotMember",
-                  "States": {
-                    "userIsNotMember": {
-                      "Type": "Task",
-                      "ResultPath": "$.deletionCriterionSatisfied",
-                      "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:userIsNotMember",
-                      "End": true
-                    }
+                ]
+              },
+
+              "isAutoDeletionCriteriaSatisfied": {
+                "Type": "Task",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:isAutoDeletionCriteriaSatisfied",
+                "Next": "chooseAccountDeletionType"
+              },
+
+              "chooseAccountDeletionType": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.criteriaSatisfied",
+                    "BooleanEquals": true,
+                    "Next": "AutoDeletion"
+                  },
+                  {
+                    "Variable": "$.criteriaSatisfied",
+                    "BooleanEquals": false,
+                    "Next": "ManualDeletion"
                   }
-                },
-                {
-                  "StartAt": "userHasNotCommented",
-                  "States": {
-                    "userHasNotCommented": {
-                      "Type": "Task",
-                      "ResultPath": "$.deletionCriterionSatisfied",
-                      "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:userHasNotCommented",
-                      "End": true
-                    }
-                  }
-                },
-                {
-                  "StartAt": "userHasNoJobs",
-                  "States": {
-                    "userHasNoJobs": {
-                      "Type": "Task",
-                      "ResultPath": "$.deletionCriterionSatisfied",
-                      "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:userHasNoJobs",
-                      "End": true
-                    }
-                  }
-                }
-              ]
-            },
+                ]
+              },
 
-            "isAutoDeletionCriteriaSatisfied": {
-              "Type": "Task",
-              "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:isAutoDeletionCriteriaSatisfied",
-              "Next": "chooseAccountDeletionType"
-            },
+              "UnsubscribeFromAllMailingLists": {
+                "Type": "Task",
+                "InputPath": "$.credentials",
+                "ResultPath": "$.unsubscribedEmails",
+                "OutputPath": "$",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:unsubscribeEmails",
+                "Next": "DeleteUser"
+              },
 
-            "chooseAccountDeletionType": {
-              "Type": "Choice",
-              "Choices": [
-                {
-                  "Variable": "$.criteriaSatisfied",
-                  "BooleanEquals": true,
-                  "Next": "AutoDeletion"
-                },
-                {
-                  "Variable": "$.criteriaSatisfied",
-                  "BooleanEquals": false,
-                  "Next": "ManualDeletion"
-                }
-              ]
-            },
+              "AutoDeletion": {
+                "Type": "Pass",
+                "Next": "UnsubscribeFromAllMailingLists"
+              },
 
-            "UnsubscribeFromAllMailingLists": {
-              "Type": "Task",
-              "InputPath": "$.credentials",
-              "ResultPath": "$.unsubscribedEmails",
-              "OutputPath": "$",
-              "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:unsubscribeEmails",
-              "Next": "DeleteUser"
-            },
+              "DeleteUser": {
+                "Type": "Task",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:deleteUser",
+                "End": true
+              },
 
-            "AutoDeletion": {
-              "Type": "Pass",
-              "Next": "UnsubscribeFromAllMailingLists"
-            },
+              "ManualDeletion": {
+                "Type": "Pass",
+                "Next": "NotifyUserhelp"
+              },
 
-            "DeleteUser": {
-              "Type": "Task",
-              "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:deleteUser",
-              "End": true
-            },
-
-            "ManualDeletion": {
-              "Type": "Pass",
-              "Next": "NotifyUserhelp"
-            },
-
-            "NotifyUserhelp": {
-              "Type": "Task",
-              "Resource": "arn:aws:lambda:eu-west-1:942464564246:function:notifyUserhelp",
-              "End": true
+              "NotifyUserhelp": {
+                "Type": "Task",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:notifyUserhelp",
+                "End": true
+              }
             }
           }
-        }
-      RoleArn: arn:aws:iam::942464564246:role/service-role/StatesExecutionRole-eu-west-1
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/StatesExecutionRole-eu-west-1
 
   startAccountDeletion:
       Type: "AWS::Lambda::Function"
@@ -146,13 +147,13 @@ Resources:
         FunctionName: startAccountDeletion
         Description: Execute Account Deletion step function
         Handler: "startAccountDeletion.handler"
-        Role: arn:aws:iam::942464564246:role/APIGatewayAWSProxyStepFunctionsExecRole
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/APIGatewayAWSProxyStepFunctionsExecRole
         Code:
           S3Bucket: !Ref lambdaCodeS3Bucket
           S3Key: !Ref lambdaCodeS3Key
         Runtime: "nodejs4.3"
         MemorySize: "512"
-        Timeout: "60"
+        Timeout: "90"
         Environment:
           Variables:
             STATE_MACHINE_ARN: !GetAtt AccountDeletion.Name
@@ -163,7 +164,7 @@ Resources:
         FunctionName: userIsNotMember
         Description: Returns true if user is not a member
         Handler: "userIsNotMember.handler"
-        Role: arn:aws:iam::942464564246:role/lambda_basic_execution
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
         Code:
           S3Bucket: !Ref lambdaCodeS3Bucket
           S3Key: !Ref lambdaCodeS3Key
@@ -177,7 +178,7 @@ Resources:
         FunctionName: userIsNotSubscriber
         Description: Returns true if user is not a DigiPack subscriber
         Handler: "userIsNotSubscriber.handler"
-        Role: arn:aws:iam::942464564246:role/lambda_basic_execution
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
         Code:
           S3Bucket: !Ref lambdaCodeS3Bucket
           S3Key: !Ref lambdaCodeS3Key
@@ -191,7 +192,7 @@ Resources:
         FunctionName: userHasNotCommented
         Description: Returns true if user has not commented
         Handler: "userHasNotCommented.handler"
-        Role: arn:aws:iam::942464564246:role/lambda_basic_execution
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
         Code:
           S3Bucket: !Ref lambdaCodeS3Bucket
           S3Key: !Ref lambdaCodeS3Key
@@ -205,7 +206,7 @@ Resources:
         FunctionName: userHasNoJobs
         Description: Returns true if user has no Jobs account
         Handler: "userHasNoJobs.handler"
-        Role: arn:aws:iam::942464564246:role/lambda_basic_execution
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
         Code:
           S3Bucket: !Ref lambdaCodeS3Bucket
           S3Key: !Ref lambdaCodeS3Key
@@ -219,7 +220,7 @@ Resources:
         FunctionName: isAutoDeletionCriteriaSatisfied
         Description: Returns true if all the criteria for automatic account deletion is satisfied
         Handler: "isAutoDeletionCriteriaSatisfied.handler"
-        Role: arn:aws:iam::942464564246:role/lambda_basic_execution
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
         Code:
           S3Bucket: !Ref lambdaCodeS3Bucket
           S3Key: !Ref lambdaCodeS3Key
@@ -233,7 +234,7 @@ Resources:
         FunctionName: unsubscribeEmails
         Description: Unsubscribe from all mailing lists in ExactTarget via Identity
         Handler: "com.gu.MyHandler"
-        Role: arn:aws:iam::942464564246:role/lambda_basic_execution
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
         Code:
           S3Bucket: !Ref lambdaCodeS3Bucket
           S3Key: unsubscribe-emails.jar
@@ -247,7 +248,7 @@ Resources:
         FunctionName: deleteUser
         Description: Delete user from Identity Mongo DB
         Handler: "deleteUser.handler"
-        Role: arn:aws:iam::942464564246:role/lambda_basic_execution
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
         Code:
           S3Bucket: !Ref lambdaCodeS3Bucket
           S3Key: !Ref lambdaCodeS3Key
@@ -261,7 +262,7 @@ Resources:
         FunctionName: notifyUserhelp
         Description: Send an email to Userhelp notifying them to perform manual deletion
         Handler: "notifyUserhelp.handler"
-        Role: arn:aws:iam::942464564246:role/lambda_basic_execution
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
         Code:
           S3Bucket: !Ref lambdaCodeS3Bucket
           S3Key: !Ref lambdaCodeS3Key
