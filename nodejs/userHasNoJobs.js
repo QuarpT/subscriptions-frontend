@@ -35,7 +35,7 @@ function userHasNoJobs(scGuCookie) {
 }
 
 exports.handler = (event, context, callback) => {
-    userHasNoJobs()
+    userHasNoJobs(event.scGuCookie)
         .then((result) => callback(null, result))
         .catch((error) => callback(error));
 };
