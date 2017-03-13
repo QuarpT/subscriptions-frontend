@@ -4,7 +4,7 @@ function deleteUser(event) {
     return new Promise((resolve, reject) => {
         var options = {
             host: 'idapi.theguardian.com',
-            path: '/user/delete',
+            path: '/user/me/delete',
             headers: {
                 'X-GU-ID-FOWARDED-SC-GU-U': event.credentials.scGuCookie,
                 'X-GU-ID-Client-Access-Token': event.credentials.clientAccessToken,
