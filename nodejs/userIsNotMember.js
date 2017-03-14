@@ -1,4 +1,6 @@
+var AWS = require('aws-sdk');
 var http = require('https');
+var kms = new AWS.KMS();
 
 function userIsNotMember(scGuCookie) {
     return new Promise((resolve, reject) => {
@@ -29,7 +31,10 @@ function userIsNotMember(scGuCookie) {
 }
 
 exports.handler = (event, context, callback) => {
-    userIsNotMember(event.scGuCookie).then((response) => {
-        callback(null, response);
-    });
+    kms.decrypt({ CiphertextBlob: new Buffer(event.stateMachineInput.CiphertextBlob) }).promise()
+        .then((data) => {
+            const decryptedInput = JSON.parse(data.Plaintext.toString('utf8'));
+            userIsNotMember(decryptedInput.scGuCookie).then((response) => callback(null, response));
+        })
+        .catch((error) => callback(error))
 };

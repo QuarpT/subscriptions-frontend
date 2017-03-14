@@ -1,4 +1,6 @@
+var AWS = require('aws-sdk');
 var http = require('https');
+var kms = new AWS.KMS();
 
 function userHasNoJobs(scGuCookie) {
     return new Promise((resolve, reject) => {
@@ -35,7 +37,10 @@ function userHasNoJobs(scGuCookie) {
 }
 
 exports.handler = (event, context, callback) => {
-    userHasNoJobs(event.scGuCookie)
-        .then((result) => callback(null, result))
-        .catch((error) => callback(error));
+    kms.decrypt({ CiphertextBlob: new Buffer(event.stateMachineInput.CiphertextBlob) }).promise()
+        .then((data) => {
+            const decryptedInput = JSON.parse(data.Plaintext.toString('utf8'));
+            userHasNoJobs(decryptedInput.scGuCookie).then((result) => callback(null, result));
+        })
+        .catch((error) => callback(error))
 };
