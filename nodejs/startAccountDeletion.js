@@ -32,6 +32,7 @@
 
 var AWS = require('aws-sdk');
 var stepfunctions = new AWS.StepFunctions();
+var kms = new AWS.KMS();
 
 exports.handler = (event, context, callback) => {
 
@@ -49,67 +50,77 @@ exports.handler = (event, context, callback) => {
         'xApiKey' : xApiKey
     });
 
-    var params = {
-        stateMachineArn: `arn:aws:states:eu-west-1:942464564246:stateMachine:${process.env.STATE_MACHINE_ARN}`,
-        input: stateMachineInput,
-        name: identityId
+    var encryptParams = {
+        KeyId: process.env.KMS_KEY_ID,
+        Plaintext: stateMachineInput
     };
 
-    stepfunctions.startExecution(params).promise()
-        .catch((error) => {
+    kms.encrypt(encryptParams).promise()
+        .catch((error) => console.log(error))
+        .then((encryptedStateMachineInput) => {
 
-            var response = {
-                statusCode: 500,
-                headers: {},
-                body: JSON.stringify(buildDotcomeIdentityErrorResponse(`Failed to start Account Deletion step function for user ${identityId}`, error))
+            var params = {
+                stateMachineArn: `arn:aws:states:eu-west-1:942464564246:stateMachine:${process.env.STATE_MACHINE_ARN}`,
+                input: JSON.stringify({stateMachineInput: encryptedStateMachineInput}),
+                name: identityId
             };
 
-            callback(null, response);
-        })
-        .then((data) => {
-            function checkExecutionFinished(executionArn) {
-                stepfunctions.describeExecution({'executionArn': executionArn}).promise()
-                    .catch((error) => setTimeout(checkExecutionFinished(executionArn), 5000))
-                    .then((executionResult) => {
-                        if (executionResult.status === "RUNNING")
-                            setTimeout(checkExecutionFinished(executionArn), 5000);
-                        else {
-                            var responseCode = (executionResult.status === "SUCCEEDED") ? 200 : 500;
-                            var responseMessage = `Account deletion ${executionResult.status} for user ${identityId}`;
+            stepfunctions.startExecution(params).promise()
+                .catch((error) => {
 
-                            var responseBody;
+                    var response = {
+                        statusCode: 500,
+                        headers: {},
+                        body: JSON.stringify(buildDotcomeIdentityErrorResponse(`Failed to start Account Deletion step function for user ${identityId}`, error))
+                    };
 
-                            if (responseCode == 200) {
-                                responseBody = {
-                                    message: responseMessage,
-                                    executionArn: executionResult.executionArn,
-                                    status: executionResult.status,
-                                    auto: executionResult.output
-                                };
-                            } else {
-                                responseBody =
-                                    buildDotcomeIdentityErrorResponse(
-                                        responseMessage,
-                                        {
+                    callback(null, response);
+                })
+                .then((data) => {
+                    function checkExecutionFinished(executionArn) {
+                        stepfunctions.describeExecution({'executionArn': executionArn}).promise()
+                            .catch((error) => setTimeout(checkExecutionFinished(executionArn), 5000))
+                            .then((executionResult) => {
+                                if (executionResult.status === "RUNNING")
+                                    setTimeout(checkExecutionFinished(executionArn), 5000);
+                                else {
+                                    var responseCode = (executionResult.status === "SUCCEEDED") ? 200 : 500;
+                                    var responseMessage = `Account deletion ${executionResult.status} for user ${identityId}`;
+
+                                    var responseBody;
+
+                                    if (responseCode == 200) {
+                                        responseBody = {
+                                            message: responseMessage,
                                             executionArn: executionResult.executionArn,
-                                            status: executionResult.status
-                                        }
-                                    )
-                            }
+                                            status: executionResult.status,
+                                            auto: executionResult.output
+                                        };
+                                    } else {
+                                        responseBody =
+                                            buildDotcomeIdentityErrorResponse(
+                                                responseMessage,
+                                                {
+                                                    executionArn: executionResult.executionArn,
+                                                    status: executionResult.status
+                                                }
+                                            )
+                                    }
 
-                            var response = {
-                                statusCode: responseCode,
-                                headers: {},
-                                body: JSON.stringify(responseBody)
-                            };
+                                    var response = {
+                                        statusCode: responseCode,
+                                        headers: {},
+                                        body: JSON.stringify(responseBody)
+                                    };
 
-                            callback(null, response);
-                        }
-                    });
-            }
+                                    callback(null, response);
+                                }
+                            });
+                    }
 
-            checkExecutionFinished(data.executionArn);
-        });
+                    checkExecutionFinished(data.executionArn);
+                });
+        })
 };
 
 /*

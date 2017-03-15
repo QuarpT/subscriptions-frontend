@@ -22,6 +22,10 @@ Parameters:
     Type: String
     Description: Package (.zip, .jar) in S3 containing the Lambda code
 
+  kmsKeyId:
+    Type: String
+    Description: KMS key ID
+
 Resources:
   AccountDeletion:
     Type: "AWS::StepFunctions::StateMachine"
@@ -109,7 +113,7 @@ Resources:
 
               "UnsubscribeFromAllMailingLists": {
                 "Type": "Task",
-                "InputPath": "$.credentials",
+                "InputPath": "$.credentials.stateMachineInput.CiphertextBlob",
                 "ResultPath": "$.unsubscribedEmails",
                 "OutputPath": "$",
                 "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:unsubscribeEmails",
@@ -157,6 +161,7 @@ Resources:
         Environment:
           Variables:
             STATE_MACHINE_ARN: !GetAtt AccountDeletion.Name
+            KMS_KEY_ID: !Ref kmsKeyId
 
   userIsNotMember:
       Type: "AWS::Lambda::Function"

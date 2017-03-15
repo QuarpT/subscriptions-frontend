@@ -14,6 +14,7 @@ libraryDependencies ++= {
     "io.github.yeghishe" %% "scala-aws-lambda-utils"      % "0.0.3",
     "com.iheart"         %% "ficus"                       % ficusV,
     "com.amazonaws"      % "aws-lambda-java-events"       % "1.3.0",
+    "com.amazonaws"      % "aws-java-sdk-kms"             % "1.11.86",
     "org.scalamock"      %% "scalamock-scalatest-support" % scalaMockV % "it,test",
     "com.squareup.okhttp3" % "okhttp" % "3.6.0",
     "net.liftweb" %% "lift-json" % "3.1.0-M1"

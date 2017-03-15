@@ -1,14 +1,16 @@
+var AWS = require('aws-sdk');
 var http = require('https');
+var kms = new AWS.KMS();
 
-function deleteUser(event) {
+function deleteUser(decryptedInput) {
     return new Promise((resolve, reject) => {
         var options = {
             host: 'idapi.theguardian.com',
             path: '/user/me/delete',
             headers: {
-                'X-GU-ID-FOWARDED-SC-GU-U': event.credentials.scGuCookie,
-                'X-GU-ID-Client-Access-Token': event.credentials.clientAccessToken,
-                'x-api-key': event.credentials.xApiKey,
+                'X-GU-ID-FOWARDED-SC-GU-U': decryptedInput.scGuCookie,
+                'X-GU-ID-Client-Access-Token': decryptedInput.clientAccessToken,
+                'x-api-key': decryptedInput.xApiKey,
                 'Referer': 'https://theguardian.com',
                 'Content-Type': "application/json",
             },
@@ -39,7 +41,10 @@ function deleteUser(event) {
 }
 
 exports.handler = (event, context, callback) => {
-    deleteUser(event)
-        .then((result) => callback(null, true))
-        .catch((error) => callback(error));
+    kms.decrypt({ CiphertextBlob: new Buffer(event.credentials.stateMachineInput.CiphertextBlob) }).promise()
+        .then((data) => {
+            const decryptedInput = JSON.parse(data.Plaintext.toString('utf8'));
+            deleteUser(decryptedInput).then((result) => callback(null, true))
+        })
+        .catch((error) => callback(error))
 };

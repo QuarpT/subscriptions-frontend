@@ -1,4 +1,6 @@
+var AWS = require('aws-sdk');
 var http = require('https');
+var kms = new AWS.KMS();
 
 function getAccessToken(clientId, clientSecret) {
     return new Promise((resolve, reject) => {
@@ -95,12 +97,13 @@ function notifyUserhelp(accessToken, identityId, email) {
 }
 
 exports.handler = (event, context, callback) => {
-    getAccessToken(process.env.CLIENT_ID, process.env.CLIENT_SECRET)
-        .then((accessToken) => {
-            notifyUserhelp(accessToken, event.credentials.identityId, event.credentials.email)
-                .then((response) => callback(null, false))
-                .catch((error) => callback(error));
+    kms.decrypt({ CiphertextBlob: new Buffer(event.credentials.stateMachineInput.CiphertextBlob) }).promise()
+        .then((data) => {
+            const decryptedInput = JSON.parse(data.Plaintext.toString('utf8'));
+            getAccessToken(process.env.CLIENT_ID, process.env.CLIENT_SECRET)
+                .then((accessToken) =>
+                    notifyUserhelp(accessToken, decryptedInput.identityId, decryptedInput.email).then((response) => callback(null, false)))
         })
-        .catch((error) => callback(error));
+        .catch((error) => callback(error))
 };
 
