@@ -65,17 +65,6 @@ Resources:
                     }
                   },
                   {
-                    "StartAt": "userHasNotCommented",
-                    "States": {
-                      "userHasNotCommented": {
-                        "Type": "Task",
-                        "ResultPath": "$.deletionCriterionSatisfied",
-                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userHasNotCommented",
-                        "End": true
-                      }
-                    }
-                  },
-                  {
                     "StartAt": "userHasNoJobs",
                     "States": {
                       "userHasNoJobs": {
@@ -88,13 +77,11 @@ Resources:
                   }
                 ]
               },
-
               "isAutoDeletionCriteriaSatisfied": {
                 "Type": "Task",
                 "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:isAutoDeletionCriteriaSatisfied",
                 "Next": "chooseAccountDeletionType"
               },
-
               "chooseAccountDeletionType": {
                 "Type": "Choice",
                 "Choices": [
@@ -110,7 +97,6 @@ Resources:
                   }
                 ]
               },
-
               "UnsubscribeFromAllMailingLists": {
                 "Type": "Task",
                 "InputPath": "$.credentials.stateMachineInput.CiphertextBlob",
@@ -119,23 +105,53 @@ Resources:
                 "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:unsubscribeEmails",
                 "Next": "DeleteUser"
               },
-
-              "AutoDeletion": {
-                "Type": "Pass",
+              "userHasNotCommented": {
+                "Type": "Task",
+                "ResultPath": "$.userHasNotCommented",
+                "OutputPath": "$",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userHasNotCommented",
+                "Next": "ChooseAutoDeletionType"
+              },
+              "anonymiseUsername": {
+                "Type": "Task",
+                "ResultPath": "$.userHasNotCommented",
+                "OutputPath": "$",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:anonymiseUsername",
+                "Next": "waitFiveSeconds"
+              },
+              "waitFiveSeconds": {
+                "Type": "Wait",
+                "Seconds": 5,
                 "Next": "UnsubscribeFromAllMailingLists"
               },
-
+              "ChooseAutoDeletionType": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.userHasNotCommented",
+                    "BooleanEquals": true,
+                    "Next": "UnsubscribeFromAllMailingLists"
+                  },
+                  {
+                    "Variable": "$.userHasNotCommented",
+                    "BooleanEquals": false,
+                    "Next": "anonymiseUsername"
+                  }
+                ]
+              },
+              "AutoDeletion": {
+                "Type": "Pass",
+                "Next": "userHasNotCommented"
+              },
               "DeleteUser": {
                 "Type": "Task",
                 "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:deleteUser",
                 "End": true
               },
-
               "ManualDeletion": {
                 "Type": "Pass",
                 "Next": "NotifyUserhelp"
               },
-
               "NotifyUserhelp": {
                 "Type": "Task",
                 "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:notifyUserhelp",
@@ -279,3 +295,17 @@ Resources:
             CLIENT_SECRET: !Ref etClientSecret
             CLIENT_ID: !Ref etClientId
             USERHELP_EMAIL: !Ref etUserhelpEmail
+
+  anonymiseUsername:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: anonymiseUsername
+        Description: Sets the username and displayname to random alphanumeric string
+        Handler: "anonymiseUsername.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "20"
