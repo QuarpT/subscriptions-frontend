@@ -36,7 +36,7 @@ function userHasNotCommented(scGuCookie) {
 }
 
 exports.handler = (event, context, callback) => {
-    kms.decrypt({ CiphertextBlob: new Buffer(event.stateMachineInput.CiphertextBlob) }).promise()
+    kms.decrypt({ CiphertextBlob: new Buffer(event.credentials.stateMachineInput.CiphertextBlob) }).promise()
         .then((data) => {
             const decryptedInput = JSON.parse(data.Plaintext.toString('utf8'));
             userHasNotCommented(decryptedInput.scGuCookie).then((result) => callback(null, result));
