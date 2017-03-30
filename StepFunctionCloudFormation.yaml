@@ -27,6 +27,10 @@ Parameters:
     Description: KMS key ID
 
 Resources:
+
+  # ****************************************************************************
+  # Step Function
+  # ****************************************************************************
   AccountDeletion:
     Type: "AWS::StepFunctions::StateMachine"
     Properties:
@@ -162,6 +166,9 @@ Resources:
       RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/StatesExecutionRole-eu-west-1
 
 
+  # ****************************************************************************
+  # API Gateway
+  # ****************************************************************************
   Api:
     Type: "AWS::ApiGateway::RestApi"
     Properties:
@@ -231,6 +238,43 @@ Resources:
         - RestApiId: !Ref Api
           StageName: PROD
 
+  ApiUsagePlanPROD:
+    Type: AWS::ApiGateway::UsagePlan
+    DependsOn: ApiDeploymentPROD
+    Properties:
+      ApiStages:
+      - ApiId: !Ref Api
+        Stage: PROD
+      Description: PROD Account Deletion API usage plan
+      UsagePlanName: AccountDeletionUsagePlanPROD
+
+  ApiUsagePlanKeyPROD:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties :
+      KeyId: !Ref ApiKeyPROD
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiUsagePlanPROD
+
+  ApiUsagePlanDEV:
+    Type: AWS::ApiGateway::UsagePlan
+    DependsOn: ApiDeploymentDEV
+    Properties:
+      ApiStages:
+      - ApiId: !Ref Api
+        Stage: DEV
+      Description: DEV Account Deletion API usage plan
+      UsagePlanName: AccountDeletionUsagePlanDEV
+
+  ApiUsagePlanKeyDEV:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties :
+      KeyId: !Ref ApiKeyDEV
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiUsagePlanDEV
+
+  # ****************************************************************************
+  # Lambdas
+  # ****************************************************************************
   startAccountDeletion:
       Type: "AWS::Lambda::Function"
       Properties:
