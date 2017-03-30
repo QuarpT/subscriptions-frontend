@@ -161,6 +161,76 @@ Resources:
           }
       RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/StatesExecutionRole-eu-west-1
 
+
+  Api:
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      Description: Account Deletion API that forntend hits to kick-off the account deletion step function
+      Name: Account Deletion
+
+  ApiDeleteResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !GetAtt Api.RootResourceId
+      PathPart: delete
+    DependsOn: Api
+
+  ApiDeleteMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      ApiKeyRequired: true
+      AuthorizationType: NONE
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiDeleteResource
+      HttpMethod: POST
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${startAccountDeletion.Arn}/invocations
+    DependsOn:
+      - Api
+      - ApiDeleteResource
+      - startAccountDeletion
+
+  ApiDeploymentDEV:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn: ApiDeleteMethod
+    Properties:
+      RestApiId: !Ref Api
+      Description: "Development stage"
+      StageName: "DEV"
+
+  ApiDeploymentPROD:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn: ApiDeleteMethod
+    Properties:
+      RestApiId: !Ref Api
+      Description: "Production stage"
+      StageName: "PROD"
+
+  ApiKeyDEV:
+    Type: "AWS::ApiGateway::ApiKey"
+    DependsOn: ApiDeploymentDEV
+    Properties:
+      Name: account-deletion-DEV
+      Description: Client Key for DEV Account Deletion API
+      Enabled: "true"
+      StageKeys:
+        - RestApiId: !Ref Api
+          StageName: DEV
+
+  ApiKeyPROD:
+    Type: "AWS::ApiGateway::ApiKey"
+    DependsOn: ApiDeploymentPROD
+    Properties:
+      Name: account-deletion-PROD
+      Description: Client Key for PROD Account Deletion API
+      Enabled: "true"
+      StageKeys:
+        - RestApiId: !Ref Api
+          StageName: PROD
+
   startAccountDeletion:
       Type: "AWS::Lambda::Function"
       Properties:
