@@ -74,6 +74,7 @@ exports.handler = (event, context, callback) => {
                         body: JSON.stringify(buildDotcomeIdentityErrorResponse(`Failed to start Account Deletion step function for user ${identityId}`, error))
                     };
 
+                    console.log(response);
                     callback(null, response);
                 })
                 .then((data) => {
@@ -113,6 +114,7 @@ exports.handler = (event, context, callback) => {
                                         body: JSON.stringify(responseBody)
                                     };
 
+                                    console.log(response);
                                     callback(null, response);
                                 }
                             });
