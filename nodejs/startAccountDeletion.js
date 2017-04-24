@@ -38,10 +38,6 @@ exports.handler = (event, context, callback) => {
 
     const eventBody = JSON.parse(event.body);
 
-    if (eventBody.reason) {
-        console.log(`Account deletion reason is: ${eventBody.reason}`)
-    }
-
     var identityId = eventBody.identityId;
     var email = eventBody.email;
     var scGuCookie = event.headers['X-GU-ID-FOWARDED-SC-GU-U'];
@@ -97,6 +93,11 @@ exports.handler = (event, context, callback) => {
                                     var responseBody;
 
                                     if (responseCode == 200) {
+
+                                        if (eventBody.reason) {
+                                            console.log(`Account deletion reason for ${identityId} is: ${eventBody.reason}`)
+                                        }
+
                                         responseBody = {
                                             message: responseMessage,
                                             executionArn: executionResult.executionArn,
