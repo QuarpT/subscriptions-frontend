@@ -78,6 +78,17 @@ Resources:
                         "End": true
                       }
                     }
+                  },
+                  {
+                    "StartAt": "userIsValidated",
+                    "States": {
+                      "userIsValidated": {
+                        "Type": "Task",
+                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userIsValidated",
+                        "End": true
+                      }
+                    }
                   }
                 ]
               },
@@ -341,6 +352,20 @@ Resources:
         FunctionName: userHasNoJobs
         Description: Returns true if user has no Jobs account
         Handler: "userHasNoJobs.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "256"
+        Timeout: "10"
+
+  userIsValidated:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: userIsValidated
+        Description: Returns true if user's email address has been validated
+        Handler: "userIsValidated.handler"
         Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
         Code:
           S3Bucket: !Ref lambdaCodeS3Bucket
