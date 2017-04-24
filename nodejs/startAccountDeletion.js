@@ -36,8 +36,10 @@ var kms = new AWS.KMS();
 
 exports.handler = (event, context, callback) => {
 
-    var identityId = JSON.parse(event.body).identityId;
-    var email = JSON.parse(event.body).email;
+    const eventBody = JSON.parse(event.body);
+
+    var identityId = eventBody.identityId;
+    var email = eventBody.email;
     var scGuCookie = event.headers['X-GU-ID-FOWARDED-SC-GU-U'];
     var clientAccessToken = event.headers['X-GU-ID-Client-Access-Token'];
     var xApiKey = event.headers['x-api-key'];
@@ -91,6 +93,11 @@ exports.handler = (event, context, callback) => {
                                     var responseBody;
 
                                     if (responseCode == 200) {
+
+                                        if (eventBody.reason) {
+                                            console.log(`Account deletion reason for ${identityId} is: ${eventBody.reason}`)
+                                        }
+
                                         responseBody = {
                                             message: responseMessage,
                                             executionArn: executionResult.executionArn,
