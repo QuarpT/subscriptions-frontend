@@ -24,7 +24,11 @@ function userIsValidated(scGuCookie) {
 
             response.on('end', () => {
                 try {
-                    resolve(JSON.parse(responseData).user.statusFields.userEmailValidated == true);
+                    const response = {
+                        name: "userIsValidated",
+                        satisfied: JSON.parse(responseData).user.statusFields.userEmailValidated == true
+                    };
+                    resolve(response);
                 } catch (error) {
                     reject(error);
                 }

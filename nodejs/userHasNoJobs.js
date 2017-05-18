@@ -24,7 +24,12 @@ function userHasNoJobs(scGuCookie) {
 
             response.on('end', () => {
                 try {
-                    resolve((JSON.parse(responseData).user.userGroups.packageCode == 'GRS') == false);
+                    const userGroups = JSON.parse(responseData).user.userGroups;
+                    const response = {
+                        name: "userHasNoJobs",
+                        satisfied: userGroups.find((group) => group.packageCode == 'GRS') === undefined
+                    };
+                    resolve(response);
                 } catch (error) {
                     reject(error);
                 }

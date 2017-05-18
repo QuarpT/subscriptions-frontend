@@ -44,7 +44,7 @@ function getAccessToken(clientId, clientSecret) {
     })
 }
 
-function notifyUserhelp(accessToken, identityId, email) {
+function notifyUserhelp(accessToken, identityId, identityEmail, failedCriterionName) {
     return new Promise((resolve, reject) => {
         var options = {
             host: 'www.exacttargetapis.com',
@@ -56,16 +56,22 @@ function notifyUserhelp(accessToken, identityId, email) {
             method: 'POST'
         };
 
+        var userhelpEmail;
+        if (failedCriterionName == "userHasNoJobs")
+            userhelpEmail = process.env.JOBS_USERHELP_EMAIL;
+        else
+            userhelpEmail = process.env.USERHELP_EMAIL;
+
         var postData = JSON.stringify(
             {
                 "To": {
-                    "Address": process.env.USERHELP_EMAIL,
-                    "SubscriberKey": process.env.USERHELP_EMAIL,
+                    "Address": userhelpEmail,
+                    "SubscriberKey": userhelpEmail,
                     "ContactAttributes": {
                         "SubscriberAttributes": {
-                            "EmailAddress": process.env.USERHELP_EMAIL,
+                            "EmailAddress": userhelpEmail,
                             "Identity ID": identityId,
-                            "User email address": email
+                            "User email address": identityEmail
                         }
                     }
                 }
@@ -102,7 +108,7 @@ exports.handler = (event, context, callback) => {
             const decryptedInput = JSON.parse(data.Plaintext.toString('utf8'));
             getAccessToken(process.env.CLIENT_ID, process.env.CLIENT_SECRET)
                 .then((accessToken) =>
-                    notifyUserhelp(accessToken, decryptedInput.identityId, decryptedInput.email).then((response) => callback(null, false)))
+                    notifyUserhelp(accessToken, decryptedInput.identityId, decryptedInput.email, event.failedCriterionName).then((response) => callback(null, false)))
         })
         .catch((error) => callback(error))
 };
