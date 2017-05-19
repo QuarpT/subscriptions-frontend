@@ -73,17 +73,6 @@ Resources:
                     }
                   },
                   {
-                    "StartAt": "userHasNoJobs",
-                    "States": {
-                      "userHasNoJobs": {
-                        "Type": "Task",
-                        "ResultPath": "$.deletionCriterion",
-                        "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userHasNoJobs",
-                        "End": true
-                      }
-                    }
-                  },
-                  {
                     "StartAt": "userIsValidated",
                     "States": {
                       "userIsValidated": {
@@ -124,9 +113,31 @@ Resources:
                 "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:unsubscribeEmails",
                 "Next": "DeleteUser"
               },
+              "userHasNoJobs": {
+                "Type": "Task",
+                "ResultPath": "$.userHasNoJobs",
+                "OutputPath": "$",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userHasNoJobs",
+                "Next": "ChooseAutoDeletionType"
+              },
+              "ChooseAutoDeletionType": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.userHasNoJobs",
+                    "BooleanEquals": true,
+                    "Next": "UnsubscribeFromAllMailingLists"
+                  },
+                  {
+                    "Variable": "$.userHasNoJobs",
+                    "BooleanEquals": false,
+                    "Next": "NotifyJobsUserhelp"
+                  }
+                ]
+              },
               "AutoDeletion": {
                 "Type": "Pass",
-                "Next": "UnsubscribeFromAllMailingLists"
+                "Next": "userHasNoJobs"
               },
               "DeleteUser": {
                 "Type": "Task",
@@ -141,6 +152,12 @@ Resources:
                 "Type": "Task",
                 "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:notifyUserhelp",
                 "End": true
+              },
+              "NotifyJobsUserhelp": {
+                "Type": "Task",
+                "ResultPath": null,
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:notifyUserhelp",
+                "Next": "UnsubscribeFromAllMailingLists"
               }
             }
           }
