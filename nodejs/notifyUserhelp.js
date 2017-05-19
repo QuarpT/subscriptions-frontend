@@ -44,7 +44,7 @@ function getAccessToken(clientId, clientSecret) {
     })
 }
 
-function notifyUserhelp(accessToken, identityId, identityEmail, failedCriterionName) {
+function notifyUserhelp(accessToken, identityId, identityEmail, userHasNoJobs) {
     return new Promise((resolve, reject) => {
         var options = {
             host: 'www.exacttargetapis.com',
@@ -57,10 +57,10 @@ function notifyUserhelp(accessToken, identityId, identityEmail, failedCriterionN
         };
 
         var userhelpEmail;
-        if (failedCriterionName == "userHasNoJobs")
-            userhelpEmail = process.env.JOBS_USERHELP_EMAIL;
-        else
+        if (userHasNoJobs)
             userhelpEmail = process.env.USERHELP_EMAIL;
+        else
+            userhelpEmail = process.env.JOBS_USERHELP_EMAIL;
 
         var postData = JSON.stringify(
             {
@@ -108,7 +108,7 @@ exports.handler = (event, context, callback) => {
             const decryptedInput = JSON.parse(data.Plaintext.toString('utf8'));
             getAccessToken(process.env.CLIENT_ID, process.env.CLIENT_SECRET)
                 .then((accessToken) =>
-                    notifyUserhelp(accessToken, decryptedInput.identityId, decryptedInput.email, event.failedCriterionName).then((response) => callback(null, false)))
+                    notifyUserhelp(accessToken, decryptedInput.identityId, decryptedInput.email, event.userHasNoJobs).then((response) => callback(null, false)))
         })
         .catch((error) => callback(error))
 };

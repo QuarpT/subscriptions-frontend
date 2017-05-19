@@ -25,11 +25,7 @@ function userHasNoJobs(scGuCookie) {
             response.on('end', () => {
                 try {
                     const userGroups = JSON.parse(responseData).user.userGroups;
-                    const response = {
-                        name: "userHasNoJobs",
-                        satisfied: userGroups.find((group) => group.packageCode == 'GRS') === undefined
-                    };
-                    resolve(response);
+                    resolve(userGroups.find((group) => group.packageCode == 'GRS') === undefined);
                 } catch (error) {
                     reject(error);
                 }
@@ -42,7 +38,7 @@ function userHasNoJobs(scGuCookie) {
 }
 
 exports.handler = (event, context, callback) => {
-    kms.decrypt({ CiphertextBlob: new Buffer(event.stateMachineInput.CiphertextBlob) }).promise()
+    kms.decrypt({ CiphertextBlob: new Buffer(event.credentials.stateMachineInput.CiphertextBlob) }).promise()
         .then((data) => {
             const decryptedInput = JSON.parse(data.Plaintext.toString('utf8'));
             userHasNoJobs(decryptedInput.scGuCookie).then((result) => callback(null, result));
