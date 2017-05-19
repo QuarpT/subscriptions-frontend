@@ -21,7 +21,15 @@ function userIsNotMember(scGuCookie) {
             });
 
             response.on('end', function () {
-                resolve(JSON.parse(str).tier == null);
+                try {
+                    const response = {
+                        name: "userIsNotMember",
+                        satisfied: JSON.parse(str).tier == null
+                    };
+                    resolve(response);
+                } catch (error) {
+                    reject(error);
+                }
             });
         }
 

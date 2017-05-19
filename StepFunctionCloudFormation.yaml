@@ -4,15 +4,19 @@ Description: "CloudFormation template for Identity Account Deletion step functio
 Parameters:
   etClientId:
     Type: String
-    Description: notifyUserhelp Exact Target client ID
+    Description: ExactTarget client ID
 
   etClientSecret:
     Type: String
-    Description: notifyUserhelp Exact Target client secret
+    Description: ExactTarget client secret
 
   etUserhelpEmail:
     Type: String
-    Description: notifyUserhelp Exact Target email address
+    Description: Userhelp ExactTarget email address
+
+  etJobsUserhelpEmail:
+    Type: String
+    Description: Jobs Userhelp ExactTarget email address
 
   lambdaCodeS3Bucket:
     Type: String
@@ -51,7 +55,7 @@ Resources:
                     "States": {
                       "userIsNotSubscriber": {
                         "Type": "Task",
-                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "ResultPath": "$.deletionCriterion",
                         "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userIsNotSubscriber",
                         "End": true
                       }
@@ -62,7 +66,7 @@ Resources:
                     "States": {
                       "userIsNotMember": {
                         "Type": "Task",
-                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "ResultPath": "$.deletionCriterion",
                         "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userIsNotMember",
                         "End": true
                       }
@@ -73,7 +77,7 @@ Resources:
                     "States": {
                       "userHasNoJobs": {
                         "Type": "Task",
-                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "ResultPath": "$.deletionCriterion",
                         "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userHasNoJobs",
                         "End": true
                       }
@@ -84,7 +88,7 @@ Resources:
                     "States": {
                       "userIsValidated": {
                         "Type": "Task",
-                        "ResultPath": "$.deletionCriterionSatisfied",
+                        "ResultPath": "$.deletionCriterion",
                         "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:userIsValidated",
                         "End": true
                       }
@@ -400,3 +404,4 @@ Resources:
             CLIENT_SECRET: !Ref etClientSecret
             CLIENT_ID: !Ref etClientId
             USERHELP_EMAIL: !Ref etUserhelpEmail
+            JOBS_USERHELP_EMAIL: !Ref etJobsUserhelpEmail
