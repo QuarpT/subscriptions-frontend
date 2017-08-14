@@ -13,28 +13,29 @@ function userIsValidated(scGuCookie) {
             }
         };
 
-        const request = http.request(options);
-
-        request.on('error', (networkError) => reject(networkError));
-
-        request.on('response', (response) => {
+        function processResponse(response) {
             var responseData = '';
 
             response.on('data', (chunk) => responseData += chunk);
 
             response.on('end', () => {
                 try {
-                    const response = {
+                    const result = {
                         name: "userIsValidated",
                         satisfied: JSON.parse(responseData).user.statusFields.userEmailValidated == true
                     };
-                    resolve(response);
+                    resolve(result);
                 } catch (error) {
                     reject(error);
                 }
             });
+        }
 
-        });
+        const request = http.request(options);
+
+        request.on('error', networkError => reject(networkError));
+
+        request.on('response', response => processResponse(response));
 
         request.end();
     })
