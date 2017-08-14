@@ -33,6 +33,7 @@
 var AWS = require('aws-sdk');
 var stepfunctions = new AWS.StepFunctions();
 var kms = new AWS.KMS();
+const crypto = require("crypto");
 
 exports.handler = (event, context, callback) => {
 
@@ -64,7 +65,7 @@ exports.handler = (event, context, callback) => {
             var params = {
                 stateMachineArn: `arn:aws:states:eu-west-1:942464564246:stateMachine:${process.env.STATE_MACHINE_ARN}`,
                 input: JSON.stringify({stateMachineInput: encryptedStateMachineInput}),
-                name: identityId
+                name: `${identityId}-${randomString()}`
             };
 
             stepfunctions.startExecution(params).promise()
@@ -149,4 +150,8 @@ function buildDotcomeIdentityErrorResponse(message, description) {
         };
 
     return identityErrorResponse;
+}
+
+function randomString() {
+    return crypto.randomBytes(3*4).toString('base64')
 }
