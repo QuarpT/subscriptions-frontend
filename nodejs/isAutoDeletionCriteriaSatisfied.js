@@ -8,10 +8,10 @@
  */
 
 exports.handler = (event, context, callback) => {
-    const criterionFailedIndex =
-        event.map((branchResult) => branchResult.deletionCriterion.satisfied).indexOf(false);
-
     try {
+        const criterionFailedIndex =
+            event.map((branchResult) => branchResult.deletionCriterion.satisfied).indexOf(false);
+
         if (criterionFailedIndex < 0) {
             callback(null, {
                 credentials: event[0],

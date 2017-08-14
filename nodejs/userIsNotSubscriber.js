@@ -1,11 +1,10 @@
-var AWS = require('aws-sdk');
-var http = require('https');
-var kms = new AWS.KMS();
+const AWS = require('aws-sdk');
+const http = require('https');
+const kms = new AWS.KMS();
 
 function userIsNotSubscriber(scGuCookie) {
     return new Promise((resolve, reject) => {
-
-        var options = {
+        const options = {
             host: 'members-data-api.theguardian.com',
             path: '/user-attributes/me/mma-digitalpack',
             headers: {
@@ -14,28 +13,30 @@ function userIsNotSubscriber(scGuCookie) {
         };
 
         function processResponse(response) {
-            var str = '';
+            var responseData = '';
 
-            response.on('data', function (chunk) {
-                str += chunk;
-            });
+            response.on('data', chunk => responseData += chunk);
 
-            response.on('end', function () {
+            response.on('end', () => {
                 try {
-                    const response = {
+                    const result = {
                         name: "userIsNotSubscriber",
-                        satisfied: JSON.parse(str).tier == null
+                        satisfied: JSON.parse(responseData).tier == null
                     };
-                    resolve(response);
+                    resolve(result);
                 } catch (error) {
                     reject(error);
                 }
-
             });
         }
 
-        http.request(options, processResponse).end();
+        const request = http.request(options);
 
+        request.on('error', networkError => reject(networkError));
+
+        request.on('response', response => processResponse(response));
+
+        request.end();
     });
 }
 
