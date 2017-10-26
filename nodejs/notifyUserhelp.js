@@ -57,10 +57,10 @@ function notifyUserhelp(accessToken, identityId, identityEmail, userHasNoJobs) {
         };
 
         var userhelpEmail;
-        if (userHasNoJobs)
-            userhelpEmail = process.env.USERHELP_EMAIL;
-        else
+        if (userHasNoJobs === false)
             userhelpEmail = process.env.JOBS_USERHELP_EMAIL;
+        else
+            userhelpEmail = process.env.USERHELP_EMAIL;
 
         var postData = JSON.stringify(
             {
