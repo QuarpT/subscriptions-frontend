@@ -142,6 +142,24 @@ Resources:
               "DeleteUser": {
                 "Type": "Task",
                 "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:deleteUser",
+                "Next": "Notify"
+              },
+              "Notify": {
+                "Type": "Task",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:notify",
+                "Retry": [{
+                  "ErrorEquals": ["States.ALL"],
+                  "MaxAttempts": 3
+                }],
+                "Catch": [{
+                  "ErrorEquals": ["States.ALL"],
+                  "Next": "CatchAllFallback"
+                }],
+                "End": true
+              },
+              "CatchAllFallback": {
+                "Type": "Pass",
+                "Result": "This is a fallback from any error code (REMOVE WHEN NOTIFY IS WORKING)",
                 "End": true
               },
               "ManualDeletion": {
@@ -402,6 +420,20 @@ Resources:
         Runtime: "nodejs4.3"
         MemorySize: "512"
         Timeout: "20"
+
+  notify:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: notify
+        Description: Publish account deletion events to SNS
+        Handler: "notify.handler"
+        Role: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_basic_execution
+        Code:
+          S3Bucket: !Ref lambdaCodeS3Bucket
+          S3Key: !Ref lambdaCodeS3Key
+        Runtime: "nodejs4.3"
+        MemorySize: "512"
+        Timeout: "10"
 
   notifyUserhelp:
       Type: "AWS::Lambda::Function"
