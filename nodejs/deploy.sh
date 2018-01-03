@@ -25,5 +25,6 @@ aws lambda update-function-code --function-name isAutoDeletionCriteriaSatisfied 
 aws lambda update-function-code --function-name notifyUserhelp --s3-bucket $S3_BUCKET --s3-key $S3_KEY
 aws lambda update-function-code --function-name deleteUser --s3-bucket $S3_BUCKET --s3-key $S3_KEY
 aws lambda update-function-code --function-name userIsValidated --s3-bucket $S3_BUCKET --s3-key $S3_KEY
+aws lambda update-function-code --function-name publishDeletion --s3-bucket $S3_BUCKET --s3-key $S3_KEY
 
 echo "Done."

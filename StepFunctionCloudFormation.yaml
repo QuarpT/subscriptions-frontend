@@ -142,11 +142,11 @@ Resources:
               "DeleteUser": {
                 "Type": "Task",
                 "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:deleteUser",
-                "Next": "Notify"
+                "Next": "PublishDeletion"
               },
-              "Notify": {
+              "PublishDeletion": {
                 "Type": "Task",
-                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:notify",
+                "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:publishDeletion",
                 "Retry": [{
                   "ErrorEquals": ["States.ALL"],
                   "MaxAttempts": 3
@@ -287,6 +287,17 @@ Resources:
       KeyId: !Ref ApiKeyDEV
       KeyType: API_KEY
       UsagePlanId: !Ref ApiUsagePlanDEV
+
+  AccountDeletionsTopicPROD:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: com-gu-identity-account-deletions-PROD
+
+  AccountDeletionsTopicDEV:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: com-gu-identity-account-deletions-DEV
+
 
   # ****************************************************************************
   # Lambdas
